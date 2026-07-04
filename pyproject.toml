@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rl-d"
+version = "2.0.0"
+description = "Async CLI to detect and measure rate limiting, WAF challenges, and silent blocks on web apps you are authorised to test."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Surya J" }]
+keywords = ["rate-limit", "waf", "pentest", "security", "http", "recon"]
+dependencies = ["curl_cffi>=0.7.0"]
+
+[project.urls]
+Homepage = "https://github.com/Surya8j/rl-d"
+
+[project.scripts]
+rl-d = "ratelimit_detect:main"
+
+[tool.setuptools]
+py-modules = ["ratelimit_detect"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
