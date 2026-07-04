@@ -20,35 +20,56 @@ silent blocks on web applications you are authorised to test.
 
 ## Install
 
+**One command** (installs the `rl-d` command via pipx, with a venv fallback):
+
 ```bash
-pip install -r requirements.txt        # just curl_cffi
-# or install as a command:
-pip install .                          # exposes the `rl-d` command
+git clone https://github.com/Surya8j/rl-d.git
+cd rl-d
+./install.sh
+```
+
+Open a new terminal afterwards if `rl-d` isn't found immediately — the installer
+adds `~/.local/bin` to your PATH.
+
+**Alternatives:**
+
+```bash
+pipx install git+https://github.com/Surya8j/rl-d.git   # isolated, no clone needed
+pip install .                                          # into the current environment
+```
+
+Prefer not to install? Run it directly (after `pip install -r requirements.txt`):
+
+```bash
+python3 ratelimit_detect.py …
 ```
 
 ## Usage
 
 ```bash
 # Interactive wizard (no flags):
-python3 ratelimit_detect.py
+rl-d
 
 # Sequential scan:
-python3 ratelimit_detect.py -u https://api.example.com/v1/search -t api
+rl-d -u https://api.example.com/v1/search -t api
 
 # Concurrent scan — 20 parallel requests per wave (surfaces hard limits fast):
-python3 ratelimit_detect.py -u https://api.example.com/v1 -c 20 -n 500
+rl-d -u https://api.example.com/v1 -c 20 -n 500
 
 # Measure the actual allowance over a 60s window:
-python3 ratelimit_detect.py -u https://api.example.com/v1 --discover --window 60
+rl-d -u https://api.example.com/v1 --discover --window 60
 
 # Authenticated POST, custom headers, JSON report for your findings:
-python3 ratelimit_detect.py -u https://api.example.com/login -X POST \
+rl-d -u https://api.example.com/login -X POST \
     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     -d '{"user":"x"}' --json login.report.json
 
 # Route through Burp for capture/replay:
-python3 ratelimit_detect.py -u https://api.example.com -c 10 --proxy http://127.0.0.1:8080 --insecure
+rl-d -u https://api.example.com -c 10 --proxy http://127.0.0.1:8080 --insecure
 ```
+
+> Installed via `install.sh`/pipx you get the `rl-d` command shown above. Running
+> from a bare clone instead? Swap `rl-d` for `python3 ratelimit_detect.py`.
 
 Non-interactive runs need `-y/--yes` to skip the authorisation prompt (or pipe input).
 The process **exit code is `1` when a limit/block is found, `0` when clean** — handy in CI.
