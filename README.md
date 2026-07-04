@@ -1,7 +1,21 @@
 # rl-d — Rate Limit Detector
 
-An async Python CLI to **detect and measure** rate limiting, WAF challenges, and
-silent blocks on web applications you are authorised to test.
+```text
+██████╗ ██╗      ██████╗
+██╔══██╗██║      ██╔══██╗
+██████╔╝██║█████╗██║  ██║
+██╔══██╗██║╚════╝██║  ██║
+██║  ██║███████╗ ██████╔╝
+╚═╝  ╚═╝╚══════╝ ╚═════╝
+  rate-limit · WAF · silent-block detector
+```
+
+**rl-d** is an async Python CLI that finds out how a web target defends itself.
+Point it at an endpoint and it fires a controlled stream of requests to surface
+hard rate limits, WAF/Cloudflare challenges, silent blocks, and progressive
+throttling — then, in `--discover` mode, measures the actual allowance (how many
+requests get through before the limit trips). Built for authorised assessments:
+it characterises protections for a report, it does not try to evade them.
 
 > ⚠️ **Authorised testing only.** rl-d sends live traffic to its target. Only run
 > it against systems you own or have explicit written permission to assess.
@@ -44,35 +58,8 @@ Prefer not to install? Run it directly (after `pip install -r requirements.txt`)
 python3 ratelimit_detect.py …
 ```
 
-## Usage
-
-```bash
-# Interactive wizard (no flags):
-rl-d
-
-# Sequential scan:
-rl-d -u https://api.example.com/v1/search -t api
-
-# Concurrent scan — 20 parallel requests per wave (surfaces hard limits fast):
-rl-d -u https://api.example.com/v1 -c 20 -n 500
-
-# Measure the actual allowance over a 60s window:
-rl-d -u https://api.example.com/v1 --discover --window 60
-
-# Authenticated POST, custom headers, JSON report for your findings:
-rl-d -u https://api.example.com/login -X POST \
-    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-    -d '{"user":"x"}' --json login.report.json
-
-# Route through Burp for capture/replay:
-rl-d -u https://api.example.com -c 10 --proxy http://127.0.0.1:8080 --insecure
-```
-
-> Installed via `install.sh`/pipx you get the `rl-d` command shown above. Running
-> from a bare clone instead? Swap `rl-d` for `python3 ratelimit_detect.py`.
-
-Non-interactive runs need `-y/--yes` to skip the authorisation prompt (or pipe input).
-The process **exit code is `1` when a limit/block is found, `0` when clean** — handy in CI.
+Run `rl-d` for the interactive wizard, or `rl-d --help` for the full flag
+reference. (From a bare clone without installing: `python3 ratelimit_detect.py`.)
 
 ## Key options
 
@@ -88,6 +75,9 @@ The process **exit code is `1` when a limit/block is found, `0` when clean** —
 | `--proxy` | Upstream proxy (e.g. Burp) |
 | `--json PATH` | Write full machine-readable report (`-` for stdout) |
 | `-q, --quiet` | Suppress live output (pair with `--json`) |
+
+Non-interactive runs need `-y/--yes` to skip the authorisation prompt. The
+process **exit code is `1` when a limit/block is found, `0` when clean** — handy in CI.
 
 ## Detection signals
 

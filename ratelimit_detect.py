@@ -579,6 +579,23 @@ class RateLimitDetector:
 
 VERSION = "2.0.0"
 
+BANNER = r"""
+██████╗ ██╗      ██████╗
+██╔══██╗██║      ██╔══██╗
+██████╔╝██║█████╗██║  ██║
+██╔══██╗██║╚════╝██║  ██║
+██║  ██║███████╗ ██████╔╝
+╚═╝  ╚═╝╚══════╝ ╚═════╝
+"""
+
+
+def print_banner():
+    """Amber startup banner (stderr). Callers decide when to suppress it."""
+    eprint(f"{C.BOLD}{C.YELLOW}{BANNER.strip(chr(10))}{C.RESET}")
+    eprint(f"  {C.CYAN}rate-limit · WAF · silent-block detector{C.RESET}"
+           f"  {C.DIM}·  v{VERSION}{C.RESET}")
+    eprint(f"  {C.DIM}authorised testing only · github.com/Surya8j/rl-d{C.RESET}\n")
+
 
 # ─── Interactive wizard (fallback when no -u given) ──────────────────────────
 def prompt_input(question: str, default: str = "", required: bool = False) -> str:
@@ -596,9 +613,8 @@ def prompt_input(question: str, default: str = "", required: bool = False) -> st
 
 
 def gather_inputs_interactive() -> Config:
-    eprint(f"\n{C.BOLD}{'─' * 60}{C.RESET}")
-    eprint(f"  {C.BOLD}{C.CYAN}rl-d{C.RESET} — Interactive Setup")
-    eprint(f"{C.BOLD}{'─' * 60}{C.RESET}")
+    eprint(f"  {C.BOLD}Interactive setup{C.RESET} {C.DIM}— press Enter to accept defaults{C.RESET}")
+    eprint(f"{C.DIM}{'─' * 60}{C.RESET}")
 
     url = normalise_url(prompt_input("Target URL", required=True))
     target_type = prompt_input("Target type? (api / webpage)", default="webpage").lower()
@@ -685,6 +701,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    help="write full report as JSON ('-' for stdout)")
     p.add_argument("-q", "--quiet", action="store_true", help="suppress live output (use with --json)")
     p.add_argument("--no-color", action="store_true", help="disable ANSI colors")
+    p.add_argument("--no-banner", action="store_true", help="suppress the startup banner")
     p.add_argument("-y", "--yes", action="store_true",
                    help="skip the authorisation confirmation prompt (for scripting)")
     p.add_argument("-V", "--version", action="version", version=f"rl-d {VERSION}")
@@ -740,6 +757,9 @@ def main(argv: list[str] | None = None):
     args = parse_args(argv)
     if args.no_color or not sys.stderr.isatty():
         C.disable()
+
+    if not args.quiet and not args.no_banner and sys.stderr.isatty():
+        print_banner()
 
     try:
         if args.url:
