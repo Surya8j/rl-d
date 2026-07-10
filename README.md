@@ -22,14 +22,15 @@ it characterises protections for a report, it does not try to evade them.
 
 ## What it does
 
-- Detects hard rate limits (HTTP 429 / 503) and block responses (401/403/406/418/444)
-- Detects Cloudflare and generic WAF challenges (Akamai/Imperva-style signatures)
-- Detects **silent blocks** via response-body size deviation from a baseline
-- Detects **progressive throttling** via response-time regression (least-squares slope)
+- Detects hard rate limits (HTTP 429); HTTP 503 is treated as ambiguous (outage-or-limit) until it recurs
+- Detects Cloudflare and generic WAF challenges via **both** body signatures and header signatures (`cf-mitigated`, `x-sucuri-block`, `AkamaiGHost`, etc.)
+- Detects **silent blocks** via response-body size deviation from a baseline distribution (mean ± stdev, not a flat %), corroborated by a status or latency shift before flagging
+- Detects **progressive throttling** via response-time regression normalised against the baseline (z-score), not a fixed absolute-seconds floor
 - Detects IP-reputation issues (blocks/challenges on the first few requests)
-- **Measures the allowance** — `--discover` reports how many requests succeed before the first limit
-- Parses `X-RateLimit-*` / `Retry-After` headers
-- Flags multiple backends (distributed-limit false-negative risk)
+- **Measures the allowance** — `--discover` reports how many requests succeed before the first limit, with a confidence rating
+- Parses `X-RateLimit-*` / `Retry-After` headers and honours the advertised backoff by stopping cleanly, never auto-retrying
+- Flags multiple backends (distributed-limit false-negative risk); every finding carries a `signal_type` and `detection_confidence`
+- Optional `--max-duration` wall-clock cap so a long/aggressive scan doesn't get your own source IP blocked
 - Browser impersonation via `curl_cffi` (Chrome / Safari TLS + JA3 fingerprints)
 
 ## Install
@@ -70,26 +71,48 @@ reference. (From a bare clone without installing: `python3 ratelimit_detect.py`.
 | `-n, --max-requests N` | Request cap (default 300) |
 | `--discover` | Measure the allowance instead of only detecting |
 | `--window S` | Discover-mode measurement window (seconds) |
+| `--max-duration S` | Hard wall-clock cap for the whole run (self-protection) |
 | `-X, -H, -b, -d` | Method, header (repeatable), cookie, body |
 | `--delay` | `burst` / `steady` / `slow` pacing |
 | `--proxy` | Upstream proxy (e.g. Burp) |
 | `--json PATH` | Write full machine-readable report (`-` for stdout) |
 | `-q, --quiet` | Suppress live output (pair with `--json`) |
 
-Non-interactive runs need `-y/--yes` to skip the authorisation prompt. The
-process **exit code is `1` when a limit/block is found, `0` when clean** — handy in CI.
+Non-interactive runs need `-y/--yes` to skip the authorisation prompt.
+
+## Exit codes
+
+Distinct per `signal_type` so CI can branch on what was found, instead of every
+finding collapsing into a single `exit(1)`:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Clean — no limit/block found |
+| `1` | Rate limit (429, confirmed 503, header exhaustion, throttling trend, or connection drops) |
+| `2` | Block status shifted mid-run |
+| `3` | WAF/challenge triggered |
+| `4` | Silent block (corroborated body-size shift) |
+| `5` | IP-reputation issue (blocked from the first few requests) |
+| `6` | Target unreachable |
 
 ## Detection signals
 
 | Signal | How detected |
 |--------|-------------|
-| Hard rate limit | HTTP 429 / 503 |
+| Hard rate limit | HTTP 429 (503 requires 2+ occurrences — see below) |
+| Ambiguous 503 | HTTP 503 alone is reported but not asserted as a limit until it recurs |
 | Block / shift | 401/403/406/418/444 after a 200 baseline |
-| WAF / Cloudflare | Body signature match |
-| Silent block | >50% body-size deviation, sustained |
-| Throttling | Positive response-time regression slope + magnitude |
+| WAF / Cloudflare | Body signature match, or header signature (`cf-mitigated`, `x-sucuri-block`, `AkamaiGHost`, etc.) |
+| Silent block | Body-size shift beyond baseline mean ± 3·stdev, corroborated by a status or latency shift |
+| Throttling | Response-time regression slope + z-score deviation, relative to the measured baseline |
 | IP reputation | Block/challenge within first 3 requests |
 | Exhaustion | `X-RateLimit-Remaining: 0` / `Retry-After` |
+
+Every report also carries a `detection_confidence` (`high`/`medium`/`low`, from
+baseline noise + sample count + corroborating-signal count + backend count) and a
+`measurement_scope` caveat: the allowance/verdict is measured for one
+(source IP + supplied credentials + this route) tuple — the underlying limit may
+be keyed on a different dimension.
 
 ## Development
 
